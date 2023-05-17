@@ -141,12 +141,12 @@ if __name__ == '__main__':
         'amazon_laptop': '/projdata9/info_fil/lixin/Resources/amazon_full/vectors/amazon_laptop_vec_200_5.txt'
     }
 
-    dataset2train_num = {
-        '14semeval_rest': 3041,
-        '14semeval_laptop': 3045,
-        '15semeval_rest': 1315,
-        '16semeval_rest': 2000
-    }
+#     dataset2train_num = {
+#         '14semeval_rest': 3041,
+#         '14semeval_laptop': 3045,
+#         '15semeval_rest': 1315,
+#         '16semeval_rest': 2000
+#     }
 
     if args.running_mode == 'cross-validation':
         n_train = dataset2train_num[args.ds_name]
