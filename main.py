@@ -198,7 +198,7 @@ if __name__ == '__main__':
     flag2embedding_path = {
         'glove_6B': '/projdata9/info_fil/lixin/Research/OTE/embeddings/glove_6B_300d.txt',
         'glove_42B': '/projdata9/info_fil/lixin/Research/OTE/embeddings/glove_42B_300d.txt',
-        'glove_840B': 'embeddings/glove.840B.300d.txt',
+        'glove_840B': 'embeddings/glove.840B.300d.txt',  # need to be downloaded from the website
         # mainly for 15semeval rest
         'yelp_rest1': '/projdata9/info_fil/lixin/Research/yelp/yelp_vec_200_2_win5_sent.txt',
         # mainly for 14semeval_rest and 16semeval_rest
@@ -206,6 +206,7 @@ if __name__ == '__main__':
         'amazon_laptop': '/projdata9/info_fil/lixin/Resources/amazon_full/vectors/amazon_laptop_vec_200_5.txt'
     }
 
+    # only for cross-validation
     dataset2train_num = {
         '14semeval_rest': 1600,
         '14semeval_laptop': 3045,
