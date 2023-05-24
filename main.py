@@ -13,6 +13,10 @@ import os
 import pickle
 from model import Model
 
+# LADy_eval
+import pytrec_eval
+import pandas as pd
+
 
 def run(args, flag2embedding_path, test_ids):
     """
@@ -68,24 +72,85 @@ def run(args, flag2embedding_path, test_ids):
     model = Model(params=args, vocab=vocab, label2tag=tag_inv_vocab, pretrained_embeddings=embeddings)
 
     results_strings = []
+
+    # LADy_eval
+    metrics = ['P', 'recall', 'ndcg_cut', 'map_cut', 'success']
+    topkstr = '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100'
+    metrics_set = set()
+    for m in metrics:
+      metrics_set.add(f'{m}_{topkstr}')
+
     for i in range(1, n_epoch + 1):
         print("In Epoch %s / %s:" % (i, n_epoch))
         # shuffle training dataset
         random.shuffle(train_set)
         # ---------------training----------------
-        loss, Y_pred_asp, Y_pred_opi, _, _ = model(dataset=train_set, is_train=True)
+        loss, Y_pred_asp, Y_pred_opi, _, _, samples_target_list = model(dataset=train_set, is_train=True)
         Y_gold_asp = [sent2tags(sent) for sent in train_set]
         p, r, f1, _ = evaluate_chunk(test_Y=Y_gold_asp, pred_Y=Y_pred_asp, dataset=train_set)
         print('\ttrain loss: %.2f, train precision: %.2f, train recall: %.2f, train f1: %.2f' % (loss, \
                                                                                                  p * 100, r * 100,
                                                                                                  f1 * 100))
         # ---------------prediction----------------
-        loss, Y_pred_asp, Y_pred_opi, aspect_attention, opinion_attention = model(dataset=test_test, is_train=False)
+        loss, Y_pred_asp, Y_pred_opi, aspect_attention, opinion_attention, samples_target_list = model(dataset=test_test, is_train=False)
         Y_gold_asp = [sent2tags(sent) for sent in test_test]
         p, r, f1, output_lines = evaluate_chunk(test_Y=Y_gold_asp, pred_Y=Y_pred_asp, dataset=test_test)
 
         print("\tCurrent results: precision: %.2f, recall: %.2f, f1: %.2f" % (p * 100, r * 100, f1 * 100))
         results_strings.append("In Epoch %s: precision: %.2f, recall: %.2f, f1: %.2f\n" % (i, p * 100, r * 100, f1 * 100))
+
+        # LADy_eval
+        print("prediction of targets list: ", samples_target_list)
+        words_list = [sent['words'] for sent in test_test]
+        word_mapped_target_list = [sent['raw_tags'] for sent in test_test]
+
+        predictions_result = [[(words_list[i][j], score) for j, score in sublist] for i, sublist in enumerate(samples_target_list)]
+        
+        # print("predictions: ", predictions_result)
+        
+        unique_predictions_result = []
+        for sublist in predictions_result:
+            seen_words = {}
+            new_sublist = []
+            for word, score in sublist:
+                if word not in seen_words or score > seen_words[word]:
+                    seen_words[word] = score
+                    new_sublist.append((word, score))
+            unique_predictions_result.append(new_sublist)
+        
+        qrel = dict()
+        run = dict()
+        
+        for i, sublist in enumerate(word_mapped_target_list):
+            q_key = 'q{}'.format(i)
+            qrel[q_key] = {}
+            for j, tag in enumerate(sublist):
+                if tag == 'T':
+                    word = words_list[i][j]
+                    qrel[q_key][word] = 1
+
+        for i, sublist in enumerate(predictions_result):
+            q_key = 'q{}'.format(i)
+            run[q_key] = {}
+            for j, (word, _) in enumerate(sublist):
+                run[q_key][word] = len(sublist) - j
+        
+        # print("qrel: ", qrel)
+        # print("run: ", run)
+
+        empty_qrel_indexes = [i for i, words in enumerate(qrel.values()) if not words]
+
+        for i in sorted(empty_qrel_indexes, reverse=True):
+            del qrel[f"q{i}"]
+            del run[f"q{i}"]
+
+        qrel = {f"q{i}": words for i, (key, words) in enumerate(qrel.items())}
+        run = {f"q{i}": words for i, (key, words) in enumerate(run.items())}
+
+        print(f'pytrec_eval for {metrics_set} ...')
+        df = pd.DataFrame.from_dict(pytrec_eval.RelevanceEvaluator(qrel, metrics_set).evaluate(run))
+        df_mean = df.mean(axis=1).to_frame('mean')
+        df_mean.to_csv(f'pred.eval.mean.csv')
 
     # log information consist of settings of hyper-parameters and intermediate results
     result_logs = ['-------------------------------------------------------\n']
@@ -133,7 +198,7 @@ if __name__ == '__main__':
     flag2embedding_path = {
         'glove_6B': '/projdata9/info_fil/lixin/Research/OTE/embeddings/glove_6B_300d.txt',
         'glove_42B': '/projdata9/info_fil/lixin/Research/OTE/embeddings/glove_42B_300d.txt',
-        'glove_840B': '/projdata9/info_fil/lixin/Research/OTE/embeddings/glove_840B_300d.txt',
+        'glove_840B': 'embeddings/glove.840B.300d.txt',
         # mainly for 15semeval rest
         'yelp_rest1': '/projdata9/info_fil/lixin/Research/yelp/yelp_vec_200_2_win5_sent.txt',
         # mainly for 14semeval_rest and 16semeval_rest
@@ -141,18 +206,18 @@ if __name__ == '__main__':
         'amazon_laptop': '/projdata9/info_fil/lixin/Resources/amazon_full/vectors/amazon_laptop_vec_200_5.txt'
     }
 
-#     dataset2train_num = {
-#         '14semeval_rest': 3041,
-#         '14semeval_laptop': 3045,
-#         '15semeval_rest': 1315,
-#         '16semeval_rest': 2000
-#     }
+    dataset2train_num = {
+        '14semeval_rest': 1600,
+        '14semeval_laptop': 3045,
+        '15semeval_rest': 665,
+        '16semeval_rest': 986
+    }
 
     if args.running_mode == 'cross-validation':
         n_train = dataset2train_num[args.ds_name]
         total_ids = list(range(n_train))
         random.shuffle(total_ids)
-        #print(total_ids)
+        # print(total_ids)
         n_fold = int(n_train / 5)
         for i in range(5):
             print("In %s-th fold of cross-validation..." % (i + 1))

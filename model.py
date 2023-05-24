@@ -709,6 +709,7 @@ class Model:
         opinion_attention_outputs = []
         aspect_attention_outputs = []
         time_costs = []
+        samples_target_list = []         # LADy_eval
         for i in range(n_samples):
             beg = time.time()
             dy.renew_cg()
@@ -750,6 +751,7 @@ class Model:
             losses = []
             # a collection of opinion summary
             H_opi_summ = []
+            # print("\nseq_len: ", seq_len)
             for t in range(seq_len):
                 # got the original words from the dataset
                 #wt = raw_words[t]
@@ -767,6 +769,7 @@ class Model:
                     opi_feat = dy.dropout(opi_feat, self.dropout)
                 p_y_x_asp = self.ASP_FC(x=asp_feat)
                 p_y_x_opi = self.OPI_FC(x=opi_feat)
+                # print("asp_predictions: ", p_y_x_asp.npvalue())
                 asp_predictions.append(p_y_x_asp.npvalue())
                 opi_predictions.append(p_y_x_opi.npvalue())
 
@@ -787,11 +790,19 @@ class Model:
             if is_train:
                 loss.backward()
                 self.optimizer.update()
+
+            # LADy_eval
+            arr = np.array(asp_predictions)
+            max_values = np.maximum(arr[:, 1], arr[:, 2])
+            tuple_list = [(index, value) for index, value in enumerate(max_values)]
+            result = sorted(tuple_list, key=lambda x: x[1], reverse=True)
+            samples_target_list.append(result)
+
             pred_asp_labels = np.argmax(np.array(asp_predictions), axis=1)
             pred_opi_labels = np.argmax(np.array(opi_predictions), axis=1)
             pred_asp_tags = bio2ot(tag_sequence=[self.asp_label2tag[l] for l in pred_asp_labels])
             pred_opi_tags = [self.opi_label2tag[l] for l in pred_opi_labels]
             Y_pred_asp.append(pred_asp_tags)
             Y_pred_opi.append(pred_opi_tags)
-        #print("Average time costs:", sum(time_costs) / len(time_costs))
-        return total_loss, Y_pred_asp, Y_pred_opi, aspect_attention_outputs, opinion_attention_outputs
+        # print("Average time costs:", sum(time_costs) / len(time_costs))
+        return total_loss, Y_pred_asp, Y_pred_opi, aspect_attention_outputs, opinion_attention_outputs, samples_target_list

@@ -186,6 +186,7 @@ def build_vocab(trainset, testset):
                 wid += 1
     vocab['PADDING'] = wid
     inv_vocab[wid] = 'PADDING'
+    # print("inv_vocab", inv_vocab)
     return vocab, inv_vocab
 
 
@@ -243,7 +244,7 @@ def obtain_labels(trainset, testset, schema='OT'):
         testset[i]['tags'] = tags.copy()
         testset[i]['labels'] = labels.copy()
         testset[i]['opinion_labels'] = opinion_labels.copy()
-
+    # print("tag_inv_vocab", tag_inv_vocab)
     return trainset, testset, tag_vocab, tag_inv_vocab
 
 
