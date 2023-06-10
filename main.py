@@ -75,7 +75,7 @@ def run(args, flag2embedding_path, test_ids):
 
     # LADy_eval
     metrics = ['P', 'recall', 'ndcg_cut', 'map_cut', 'success']
-    topkstr = '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100'
+    topkstr = '1,5,10,100'
     metrics_set = set()
     for m in metrics:
       metrics_set.add(f'{m}_{topkstr}')
@@ -100,7 +100,7 @@ def run(args, flag2embedding_path, test_ids):
         results_strings.append("In Epoch %s: precision: %.2f, recall: %.2f, f1: %.2f\n" % (i, p * 100, r * 100, f1 * 100))
 
         # LADy_eval
-        print("prediction of targets list: ", samples_target_list)
+        # print("prediction of targets list: ", samples_target_list)
         words_list = [sent['words'] for sent in test_test]
         word_mapped_target_list = [sent['raw_tags'] for sent in test_test]
 
@@ -177,7 +177,7 @@ if __name__ == '__main__':
     parser.add_argument("-win", type=int, default=3, help="window size")
     parser.add_argument("-n_steps", type=int, default=5, help="number of steps in truncated self attention")
     parser.add_argument("-optimizer", type=str, default="sgd", help="optimizer (or, trainer)")
-    parser.add_argument("-n_epoch", type=int, default=100, help="number of training epoch")
+    parser.add_argument("-n_epoch", type=int, default=10, help="number of training epoch")
     parser.add_argument("-dropout", type=float, default=0.5, help="dropout rate for final representations")
     parser.add_argument("-dropout_asp", type=float, default=0.5, help="dropout rate for ASP-LSTM")
     parser.add_argument("-dropout_opi", type=float, default=0.5, help="dropout rate for OPI-LSTM")
@@ -187,6 +187,8 @@ if __name__ == '__main__':
     parser.add_argument("-model_name", type=str, default="full", help="model name")
     parser.add_argument("-attention_type", type=str, default="bilinear", help="attention type")
     parser.add_argument("-running_mode", type=str, default="train-test", help="running mode")
+    parser.add_argument("-output", type=str, default="output/", help="output file path")
+
     args = parser.parse_args()
     # seed number for dynet libary
     args.dynet_seed = dy_seed
@@ -228,7 +230,20 @@ if __name__ == '__main__':
                 test_ids = total_ids[i*n_fold:(i+1)*n_fold]
             run(args=args, flag2embedding_path=flag2embedding_path, test_ids=test_ids)
     else:
-        run(args=args, flag2embedding_path=flag2embedding_path, test_ids=None)
+        datasets = []
+        for d in ['SemEval14L', 'SemEval14R', '2015SB12', '2016SB5']:
+            for l in ['eng', 'pes_Arab', 'zho_Hans', 'deu_Latn', 'arb_Arab', 'fra_Latn', 'spa_Latn',
+                      'pes_Arab.zho_Hans.deu_Latn.arb_Arab.fra_Latn.spa_Latn']:
+                if l == 'eng':
+                    datasets.append(f'{d}')
+                else:
+                    datasets.append(f'{d}-{l}')
+        for dataset in datasets:
+            args.ds_name = dataset
+            output_path = f'output/{dataset}'
+            if not os.path.isdir(output_path):
+                os.makedirs(output_path)
+            run(args=args, flag2embedding_path=flag2embedding_path, test_ids=None)
 
 
 
