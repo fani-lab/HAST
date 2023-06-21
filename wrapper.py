@@ -40,6 +40,7 @@ def preprocess(org_reviews, is_test, lang):
             if r.augs and not is_test:
                 if lang == 'pes_Arab.zho_Hans.deu_Latn.arb_Arab.fra_Latn.spa_Latn':
                     for key, value in r.augs.items():
+                        aos_list = []
                         text = ' '.join(r.augs[key][1].sentences[0]).strip() + '####'
                         for aos_instance in r.augs[key][1].aos:
                             aos_list.extend(aos_instance[0])
@@ -68,11 +69,13 @@ def preprocess(org_reviews, is_test, lang):
             for aos_instance in r.aos[0]:
                 aos_list.extend(aos_instance[0])
             # text = ' '.join(r.sentences[0]).replace('*****', '').replace('   ', '  ').replace('  ', ' ').replace('  ', ' ') + '####'
-            text = re.sub(r'\s{2,}', ' ', ' '.join(r.sentences[0]).replace('#####', '').strip()) + '####'
+            # text = re.sub(r'\s{2,}', ' ', ' '.join(r.sentences[0]).replace('#####', '').strip()) + '####'
+            text = re.sub(r'\s{2,}', ' ', ' '.join(r.sentences[0]).strip()) + '####'
+
             for idx, word in enumerate(r.sentences[0]):
-                if is_test and word == "#####":
-                    continue
-                elif idx in aos_list:
+                # if is_test and word == "#####":
+                #     continue
+                if idx in aos_list:
                     tag = word + '=T' + ' '
                     text += tag
                 else:
@@ -99,7 +102,7 @@ def main(args):
         test_hidden = []
         for t in range(len(test)):
             if random() < hp:
-                test_hidden.append(test[t].hide_aspects())
+                test_hidden.append(test[t].hide_aspects(mask="z", mask_size=5))
             else:
                 test_hidden.append(test[t])
         preprocessed_test = preprocess(test_hidden, True, args.lang)

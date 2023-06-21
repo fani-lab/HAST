@@ -1,5 +1,6 @@
  ##TODO
 import dynet_config
+dynet_config.set_gpu(True)
 dynet_config.set(mem='3072', random_seed=1314159)
 import dynet as dy
 import math
